@@ -42,7 +42,7 @@ Many thanks to the following open-source projects:
 * [transfusion](https://github.com/XuyangBai/TransFusion)
 
 
-## Citation
+## Reference
 
 ```bibtex
 @article{yang2022deepinteraction,

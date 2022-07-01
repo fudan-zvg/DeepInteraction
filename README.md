@@ -15,15 +15,15 @@
 
 |   Model   | Modality | mAP  | NDS  |
 | :-------: | :------: | :--: | :--: |
-| BEVFusion-e |   C+L    | 75.62 | 76.28 |
-| BEVFusion-large |   C+L    | 74.12 | 75.52 |
-| BEVFusion-base |   C+L    | 70.78 | 73.43 |
+| DeepInteraction-e |   C+L    | 75.62 | 76.28 |
+| DeepInteraction-large |   C+L    | 74.12 | 75.52 |
+| DeepInteraction-base |   C+L    | 70.78 | 73.43 |
 
 ### 3D Object Detection (on nuScenes val)
 
 |   Model   | Modality | mAP  | NDS  |
 | :-------: | :------: | :--: | :--: |
-| BEVFusion-base |   C+L    | 69.85 | 72.63 |
+| DeepInteraction-base |   C+L    | 69.85 | 72.63 |
 
 
 ## Get Started

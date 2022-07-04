@@ -47,7 +47,6 @@ Many thanks to the following open-source projects:
 @article{yang2022deepinteraction,
   title={DeepInteraction: Exploring Multi-modal Interaction for 3D Object Detection},
   author={Yang, Zeyu and Chen, Jiaqi and Miao, Zhenwei and Li, Wei and Zhu, Xiatian and Zhang, Li},
-  journal={arXiv},
   year={2022}
 }
 ```

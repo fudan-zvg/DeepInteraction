@@ -4,7 +4,7 @@
 ## News
 
 - **(2022/6/27)** DeepInteraction-e ranks first on [nuScenes](https://nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) among all solutions.
-- **(2022/6/27)** DeepInteraction-large ranks first on [nuScenes](https://nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) among all non-ensemble solutions.
+- **(2022/6/26)** DeepInteraction-large ranks first on [nuScenes](https://nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) among all non-ensemble solutions.
 - **(2022/5/18)** DeepInteraction-base ranks first on [nuScenes](https://nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any) among all solutions that do not use test-time augmentation and model ensemble.
 
 

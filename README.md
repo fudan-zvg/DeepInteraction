@@ -1,4 +1,4 @@
-# DeepInteraction: Exploring Multi-modal Interaction for 3D Object Detection
+# DeepInteraction: 3D Object Detection via Modality Interaction
 
 
 ## News
@@ -45,7 +45,7 @@ Many thanks to the following open-source projects:
 
 ```bibtex
 @article{yang2022deepinteraction,
-  title={DeepInteraction: Exploring Multi-modal Interaction for 3D Object Detection},
+  title={DeepInteraction: 3D Object Detection via Modality Interaction},
   author={Yang, Zeyu and Chen, Jiaqi and Miao, Zhenwei and Li, Wei and Zhu, Xiatian and Zhang, Li},
   year={2022}
 }

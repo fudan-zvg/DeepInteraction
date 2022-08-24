@@ -16,7 +16,7 @@
 
 |   Model   | Modality | mAP  | NDS  |
 | :-------: | :------: | :--: | :--: |
-| DeepInteraction-e |   C+L    | 75.62 | 76.28 |
+| DeepInteraction-e |   C+L    | 75.74 | 76.34 |
 | DeepInteraction-large |   C+L    | 74.12 | 75.52 |
 | DeepInteraction-base |   C+L    | 70.78 | 73.43 |
 

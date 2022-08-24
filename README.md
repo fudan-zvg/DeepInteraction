@@ -1,5 +1,7 @@
 # DeepInteraction: 3D Object Detection via Modality Interaction
-
+### [Paper](https://arxiv.org/abs/2208.11112)
+> [**Learning Ego 3D Representation as Ray Tracing**](https://arxiv.org/abs/2208.11112),            
+> Zeyu Yang, Jiaqi Chen, Zhenwei Miao, [Wei Li](https://weivision.github.io/), [Xiatian Zhu](https://xiatian-zhu.github.io), [Li Zhang](https://www.robots.ox.ac.uk/~lz)
 
 ## News
 
@@ -47,6 +49,7 @@ Many thanks to the following open-source projects:
 @article{yang2022deepinteraction,
   title={DeepInteraction: 3D Object Detection via Modality Interaction},
   author={Yang, Zeyu and Chen, Jiaqi and Miao, Zhenwei and Li, Wei and Zhu, Xiatian and Zhang, Li},
+  journal={arXiv preprint},
   year={2022}
 }
 ```

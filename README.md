@@ -46,10 +46,10 @@ Many thanks to the following open-source projects:
 ## Reference
 
 ```bibtex
-@article{yang2022deepinteraction,
+@inproceedings{yang2022deepinteraction,
   title={DeepInteraction: 3D Object Detection via Modality Interaction},
   author={Yang, Zeyu and Chen, Jiaqi and Miao, Zhenwei and Li, Wei and Zhu, Xiatian and Zhang, Li},
-  journal={arXiv preprint},
+  booktitle={NeurIPS},
   year={2022}
 }
 ```

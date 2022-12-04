@@ -4,7 +4,7 @@
 2. `Pytorch=1.9.1`
 3. `CUDA=11.1`
 
-### **Step. 1** Install mmcv-full==1.4.1. 
+### **Step. 1** Install mmcv-full==1.3.18. 
 ```
 pip install mmcv-full==1.3.18
 ```

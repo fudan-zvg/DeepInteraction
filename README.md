@@ -1,7 +1,8 @@
 # DeepInteraction: 3D Object Detection via Modality Interaction
 ### [Paper](https://arxiv.org/abs/2208.11112)
 > [**DeepInteraction: 3D Object Detection via Modality Interaction**](https://arxiv.org/abs/2208.11112),            
-> Zeyu Yang, Jiaqi Chen, Zhenwei Miao, [Wei Li](https://weivision.github.io/), [Xiatian Zhu](https://xiatian-zhu.github.io), [Li Zhang](https://www.robots.ox.ac.uk/~lz)
+> Zeyu Yang, Jiaqi Chen, Zhenwei Miao, [Wei Li](https://weivision.github.io/), [Xiatian Zhu](https://xiatian-zhu.github.io), [Li Zhang](https://lzrobots.github.io)
+> **NeurIPS 2022**
 
 ## News
 

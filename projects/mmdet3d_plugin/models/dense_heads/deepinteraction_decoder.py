@@ -279,34 +279,20 @@ class DeepInteractionDecoder(nn.Module):
         self.on_the_image_mask = []
         
         for layer_idx in range(self.num_mmpi):
-            if layer_idx == 0:
-                prev_query_feat = query_feat.detach().clone()
-            if layer_idx == 1:
-                prev_query_feat = query_feat.detach().clone()
-            if layer_idx == 2:
-                pass
-            if layer_idx == 3:
-                prev_query_feat = query_feat.detach().clone()
+            prev_query_feat = query_feat.clone()
             query_pos = res_layer['center'].detach().clone().permute(0, 2, 1)
-            if layer_idx != 2:
-                query_feat, on_the_image = self.decode_head[layer_idx](
-                    query_feat=query_feat, res_layer=res_layer, 
-                    new_lidar_feat=new_lidar_feat, bev_pos=bev_pos, img_feat_flatten=img_feat_flatten, img_feat_pos=img_feat_pos, 
-                    img_metas=img_metas, img_h=img_h, img_w=img_w
-                )
-            else:
-                query_feat, on_the_image = self.decode_head[layer_idx](
-                    query_feat=prev_query_feat, res_layer=res_layer, 
-                    new_lidar_feat=new_lidar_feat, bev_pos=bev_pos, img_feat_flatten=img_feat_flatten, img_feat_pos=img_feat_pos, 
-                    img_metas=img_metas, img_h=img_h, img_w=img_w
-                )
+            query_feat, on_the_image = self.decode_head[layer_idx](
+                query_feat=prev_query_feat, res_layer=res_layer, 
+                new_lidar_feat=new_lidar_feat, img_feat_flatten=img_feat_flatten,
+                img_metas=img_metas, img_h=img_h, img_w=img_w
+            )
             res_layer = self.pred_head[layer_idx](torch.cat([query_feat, prev_query_feat], dim=1))
             res_layer['center'] = res_layer['center'] + query_pos.permute(0, 2, 1)
-            layer_mask = on_the_image != -1 if layer_idx % 2 == 0 else self.on_the_image_mask[-1]
-            self.on_the_image_mask.append(layer_mask)
-            for key, value in res_layer.items():
-                pred_dim = value.shape[1]
-                res_layer[key][~self.on_the_image_mask[-1].unsqueeze(1).repeat(1, pred_dim, 1)] = first_res_layer[key][~self.on_the_image_mask[-1].unsqueeze(1).repeat(1, pred_dim, 1)]
+            if layer_idx % 2 == 0:
+                self.on_the_image_mask.append(on_the_image != -1)
+                for key, value in res_layer.items():
+                    pred_dim = value.shape[1]
+                    res_layer[key][~self.on_the_image_mask[-1].unsqueeze(1).repeat(1, pred_dim, 1)] = first_res_layer[key][~self.on_the_image_mask[-1].unsqueeze(1).repeat(1, pred_dim, 1)]
             ret_dicts.append(res_layer)
 
         if self.initialize_by_heatmap:

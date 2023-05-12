@@ -656,7 +656,7 @@ class ImageRCNNBlock(nn.Module):
         self.linear2 = nn.Linear(hidden_channel*4, hidden_channel)
         self.activation = nn.GELU()
 
-    def forward(self, query_feat, res_layer, new_lidar_feat, bev_pos, img_feat_flatten, img_feat_pos, img_metas, img_h, img_w, **kwargs):
+    def forward(self, query_feat, res_layer, new_lidar_feat, img_feat_flatten, img_metas, img_h, img_w, **kwargs):
         batch_size = query_feat.shape[0]
         query_pos = res_layer['center'].detach().clone().permute(0, 2, 1)
         prev_query_feat = query_feat
@@ -784,7 +784,7 @@ class PointRCNNBlock(nn.Module):
         self.linear2_pts = nn.Linear(hidden_channel*4, hidden_channel)
         self.activation_pts = nn.GELU()
 
-    def forward(self, query_feat, res_layer, new_lidar_feat, bev_pos, img_feat_flatten, img_feat_pos, img_metas, img_h, img_w, **kwargs):
+    def forward(self, query_feat, res_layer, new_lidar_feat, img_feat_flatten, img_metas, img_h, img_w, **kwargs):
         batch_size = query_feat.shape[0]
         prev_query_feat = query_feat
         query_feat = torch.zeros_like(query_feat)

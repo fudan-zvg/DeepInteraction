@@ -1,8 +1,11 @@
-# DeepInteraction: 3D Object Detection via Modality Interaction
-### [Paper](https://arxiv.org/abs/2208.11112)
+# DeepInteraction & DeepInteraction++
 > [**DeepInteraction: 3D Object Detection via Modality Interaction**](https://arxiv.org/abs/2208.11112),            
 > Zeyu Yang, Jiaqi Chen, Zhenwei Miao, [Wei Li](https://weivision.github.io/), [Xiatian Zhu](https://xiatian-zhu.github.io), [Li Zhang](https://lzrobots.github.io)\
 > **NeurIPS 2022**
+
+> [**DeepInteraction++: Multi-Modality Interaction for Autonomous Driving**](https://arxiv.org/abs/2408.05075),            
+> Zeyu Yang, Nan Song, [Wei Li](https://weivision.github.io/), [Xiatian Zhu](https://xiatian-zhu.github.io), [Li Zhang](https://lzrobots.github.io), [Philip H.S. Torr](https://torrvision.com/index.html)\
+> **Arxiv 2024**
 
 ## News
 
@@ -61,5 +64,14 @@ Many thanks to the following open-source projects:
   author={Yang, Zeyu and Chen, Jiaqi and Miao, Zhenwei and Li, Wei and Zhu, Xiatian and Zhang, Li},
   booktitle={NeurIPS},
   year={2022}
+}
+```
+
+```bibtex
+@inproceedings{yang2024deepinteractionpp,
+  title={DeepInteraction++: Multi-Modality Interaction for Autonomous Driving},
+  author={Yang, Zeyu and Song, Nan and Li, Wei and Zhu, Xiatian and Zhang, Li and Philip H.S.},
+  booktitle={Arxiv},
+  year={2024}
 }
 ```

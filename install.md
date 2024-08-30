@@ -29,7 +29,12 @@ python -m pip install detectron2 -f \
   https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.9/index.html
 ```
 
-### **Step. 5** Clone deepInteraction. 
+### **Step. 5** Install FlashAttention. 
+```
+pip install flash-attn==0.2.2
+```
+
+### **Step. 6** Clone deepInteraction. 
 ```
 git clone https://github.com/fudan-zvg/DeepInteraction.git
 cd DeepInteraction

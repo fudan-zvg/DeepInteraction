@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn import Linear
 from torch.nn.init import xavier_uniform_, constant_, xavier_normal_
+from mmcv.cnn.bricks.transformer import FFN as TransFFN
 
 class PositionEmbeddingLearned(nn.Module):
     """
@@ -835,6 +836,255 @@ class PointRCNNBlock(nn.Module):
             query_feat_view = query_feat_view + self.dropout3_pts(query_feat_view2)
             query_feat_view = self.norm3_pts(query_feat_view)
 
+            query_feat[sample_idx, : , :] = query_feat_view.permute(0,2,1)[0]
+
+        return query_feat, None
+
+ 
+class ImageRCNNBlockV2(nn.Module):
+
+    def __init__(self, num_views, num_proposals, out_size_factor_img, test_cfg, bbox_coder, hidden_channel, num_heads, dropout):
+        super(ImageRCNNBlockV2, self).__init__()
+        self.num_views = num_views
+        self.num_proposals = num_proposals
+        self.out_size_factor_img = out_size_factor_img
+        self.test_cfg = test_cfg
+        self.bbox_coder = bbox_coder
+        self.pooler = ROIPooler(
+            output_size=7,
+            scales=[1.0 / self.out_size_factor_img, ],
+            sampling_ratio=2,
+            pooler_type="ROIAlignV2",
+        )
+        self.dyconv = DynamicConv(None)
+        self.dyconv_pre_self_attn = nn.MultiheadAttention(hidden_channel, num_heads, dropout=dropout)
+        self.dropout1 = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(hidden_channel)
+        self.dropout2 = nn.Dropout(dropout)
+        self.norm2 = nn.LayerNorm(hidden_channel)
+        self.dropout3 = nn.Dropout(dropout)
+        self.norm3 = nn.LayerNorm(hidden_channel)
+        self.self_norm = nn.LayerNorm(hidden_channel)
+
+        self.ffn = TransFFN(
+            embed_dims=hidden_channel,
+            feedforward_channels=hidden_channel * 4,
+            num_fcs=2,
+            ffn_drop=dropout,
+            act_cfg=dict(type='ReLU', inplace=True))
+        self.self_ffn = TransFFN(
+            embed_dims=hidden_channel,
+            feedforward_channels=hidden_channel * 4,
+            num_fcs=2,
+            ffn_drop=dropout,
+            act_cfg=dict(type='ReLU', inplace=True))
+        self.scale = nn.Parameter(torch.ones(1)*0.5)
+        self.self_scale = nn.Parameter(torch.ones(1)*0.5)
+
+    def forward(self, query_feat, res_layer, new_lidar_feat, img_feat_flatten, img_metas, img_h, img_w, **kwargs):
+        batch_size = query_feat.shape[0]
+        query_pos = res_layer['center'].detach().clone().permute(0, 2, 1)
+        prev_query_feat = query_feat
+        prev_res_layer = res_layer
+        query_feat = torch.zeros_like(query_feat)
+        query_pos_realmetric = query_pos.permute(0, 2, 1) * self.test_cfg['out_size_factor'] * self.test_cfg['voxel_size'][0] + self.test_cfg['pc_range'][0]
+        query_pos_3d = torch.cat([query_pos_realmetric, res_layer['height']], dim=1).detach().clone()
+        if 'vel' in res_layer:
+            vel = copy.deepcopy(res_layer['vel'].detach())
+        else:
+            vel = None
+        pred_boxes = self.bbox_coder.decode(
+                copy.deepcopy(res_layer['heatmap'].detach()),
+                copy.deepcopy(res_layer['rot'].detach()),
+                copy.deepcopy(res_layer['dim'].detach()),
+                copy.deepcopy(res_layer['center'].detach()),
+                copy.deepcopy(res_layer['height'].detach()),
+                vel,
+            )
+        on_the_image_mask = torch.ones([batch_size, self.num_proposals]).to(query_pos_3d.device) * -1
+        
+        self_attn_mask = kwargs.get('self_attn_mask', None)
+        
+        for sample_idx in range(batch_size):
+            lidar2img_rt = query_pos_3d.new_tensor(img_metas[sample_idx]['lidar2img'])
+            img_scale_factor = (query_pos_3d.new_tensor([1.0, 1.0]))
+            img_flip = img_metas[sample_idx]['flip'] if 'flip' in img_metas[sample_idx].keys() else False
+            img_crop_offset = (
+                    query_pos_3d.new_tensor(img_metas[sample_idx]['img_crop_offset'])
+                    if 'img_crop_offset' in img_metas[sample_idx].keys() else 0)
+            img_shape = img_metas[sample_idx]['img_shape'][0][:2]
+            img_pad_shape = img_metas[sample_idx]['input_shape'][:2]
+            boxes = LiDARInstance3DBoxes(pred_boxes[sample_idx]['bboxes'][:, :7], box_dim=7)
+            query_pos_3d_with_corners = torch.cat([query_pos_3d[sample_idx], boxes.corners.permute(2, 0, 1).view(3, -1)], dim=-1)
+            points = apply_3d_transformation(query_pos_3d_with_corners.T, 'LIDAR', img_metas[sample_idx], reverse=True).detach()
+            num_points = points.shape[0]
+
+            for view_idx in range(self.num_views):
+                pts_4d = torch.cat([points, points.new_ones(size=(num_points, 1))], dim=-1)
+                pts_2d = pts_4d @ lidar2img_rt[view_idx].t()
+
+                pts_2d[:, 2] = torch.clamp(pts_2d[:, 2], min=1e-5)
+                pts_2d[:, 0] /= pts_2d[:, 2]
+                pts_2d[:, 1] /= pts_2d[:, 2]
+
+                # img transformation: scale -> crop -> flip
+                # the image is resized by img_scale_factor
+                img_coors = pts_2d[:, 0:2] * img_scale_factor  # Nx2
+                img_coors -= img_crop_offset
+
+                # grid sample, the valid grid range should be in [-1,1]
+                coor_x, coor_y = torch.split(img_coors, 1, dim=1)  # each is Nx1
+                if img_flip:
+                    # by default we take it as horizontal flip
+                    # use img_shape before padding for flip
+                    orig_h, orig_w = img_shape
+                    coor_x = orig_w - coor_x
+                
+                coor_x, coor_corner_x = coor_x[0:self.num_proposals, :], coor_x[self.num_proposals:, :]
+                coor_y, coor_corner_y = coor_y[0:self.num_proposals, :], coor_y[self.num_proposals:, :]
+                coor_corner_x = coor_corner_x.reshape(self.num_proposals, 8, 1)
+                coor_corner_y = coor_corner_y.reshape(self.num_proposals, 8, 1)
+                coor_corner_xy = torch.cat([coor_corner_x, coor_corner_y], dim=-1)
+
+                h, w = img_pad_shape
+                on_the_image = (coor_x > 0) * (coor_x < w) * (coor_y > 0) * (coor_y < h)
+                on_the_image = on_the_image.squeeze()
+                # skip the following computation if no object query fall on current image
+                if on_the_image.sum() <= 1:
+                    continue
+                on_the_image_mask[sample_idx, on_the_image] = view_idx
+                # add spatial constraint
+                circumscribed_rectangle_on_feature_max_height = coor_corner_xy[on_the_image, :, 1].max(1).values
+                circumscribed_rectangle_on_feature_max_width = coor_corner_xy[on_the_image, :, 0].max(1).values
+                circumscribed_rectangle_on_feature_min_height = coor_corner_xy[on_the_image, :, 1].min(1).values
+                circumscribed_rectangle_on_feature_min_width = coor_corner_xy[on_the_image, :, 0].min(1).values
+
+                circumscribed_rectangle_on_feature_coor = torch.stack([circumscribed_rectangle_on_feature_min_width,
+                                                                        circumscribed_rectangle_on_feature_min_height,
+                                                                        circumscribed_rectangle_on_feature_max_width,
+                                                                        circumscribed_rectangle_on_feature_max_height], dim=1)
+                roi_features = self.pooler([img_feat_flatten[sample_idx:sample_idx + 1,
+                                                                        view_idx].reshape(1, -1, img_h, img_w)],
+                                            [Boxes(circumscribed_rectangle_on_feature_coor)])
+
+                query_feat_view = prev_query_feat[sample_idx, :, on_the_image][None].permute(2, 0, 1)
+                roi_features = roi_features.flatten(2).permute(2, 0, 1)
+
+                query_feat_view2 = self.dyconv_pre_self_attn(query_feat_view, query_feat_view, value=query_feat_view, attn_mask=None if self_attn_mask is None else self_attn_mask[sample_idx, on_the_image][:, on_the_image])[0]
+                query_feat_view = query_feat_view + self.dropout1(query_feat_view2)
+                query_feat_view = self.norm1(query_feat_view)
+                self_feat_view = query_feat_view.clone()
+
+                query_feat_view = query_feat_view.permute(1, 0, 2)
+                query_feat_view2 = self.dyconv(query_feat_view, roi_features)
+                query_feat_view = query_feat_view + self.dropout2(query_feat_view2)
+                query_feat_view = self.norm2(query_feat_view)
+
+                query_feat_view = self.ffn(query_feat_view)
+                query_feat_view = self.norm3(query_feat_view)
+
+                self_feat_view = self.self_ffn(self_feat_view)
+                self_feat_view = self.self_norm(self_feat_view)
+                query_feat_view = query_feat_view * self.scale + self_feat_view * self.self_scale
+
+                query_feat_view = query_feat_view[0].permute(1, 0) # [128, 23]
+                query_feat[sample_idx, :, on_the_image] = query_feat_view.clone()  # 2, 128, 200 重叠区域没有特殊处理 只是用后一视图的信息进行覆盖
+
+        return query_feat, on_the_image_mask
+
+
+
+class PointRCNNBlockV2(nn.Module):
+    def __init__(self, hidden_channel, num_heads, dropout, bbox_coder):
+        super(PointRCNNBlockV2, self).__init__()
+        self.bbox_coder = bbox_coder
+        self.pooler_pts = ROIPooler(
+            output_size=7,
+            scales=[1.0 / 1, ],
+            sampling_ratio=2,
+            pooler_type="ROIAlignV2",
+        )
+        self.dyconv_pts = DynamicConv(None)
+        self.dyconv_pre_self_attn_pts = nn.MultiheadAttention(hidden_channel, num_heads, dropout=dropout)
+        self.dropout1_pts = nn.Dropout(dropout)
+        self.norm1_pts = nn.LayerNorm(hidden_channel)
+        self.dropout2_pts = nn.Dropout(dropout)
+        self.norm2_pts = nn.LayerNorm(hidden_channel)
+        self.dropout3_pts = nn.Dropout(dropout)
+        self.norm3_pts = nn.LayerNorm(hidden_channel)
+        self.self_norm_pts = nn.LayerNorm(hidden_channel)
+        self.ffn = TransFFN(
+            embed_dims=hidden_channel,
+            feedforward_channels=hidden_channel * 4,
+            num_fcs=2,
+            ffn_drop=dropout,
+            act_cfg=dict(type='ReLU', inplace=True))
+        self.self_ffn = TransFFN(
+            embed_dims=hidden_channel,
+            feedforward_channels=hidden_channel * 4,
+            num_fcs=2,
+            ffn_drop=dropout,
+            act_cfg=dict(type='ReLU', inplace=True))
+        self.scale = nn.Parameter(torch.ones(1)*0.5)
+        self.self_scale = nn.Parameter(torch.ones(1)*0.5)
+
+
+    def forward(self, query_feat, res_layer, new_lidar_feat, img_feat_flatten, img_metas, img_h, img_w, **kwargs):
+        batch_size = query_feat.shape[0]
+        prev_query_feat = query_feat
+        query_feat = torch.zeros_like(query_feat)
+        if 'vel' in res_layer:
+            vel = copy.deepcopy(res_layer['vel'].detach())
+        else:
+            vel = None
+        pred_boxes = self.bbox_coder.decode(
+                copy.deepcopy(res_layer['heatmap'].detach()),
+                copy.deepcopy(res_layer['rot'].detach()),
+                copy.deepcopy(res_layer['dim'].detach()),
+                copy.deepcopy(res_layer['center'].detach()),
+                copy.deepcopy(res_layer['height'].detach()),
+                vel,
+            )
+        corners = []
+        for sample_idx in range(batch_size):
+            box = pred_boxes[sample_idx]['bboxes'][:, :7]
+            box[:,3:6] *= 2
+            corners.append(LiDARInstance3DBoxes(box, box_dim=7).corners)
+        corners = torch.stack(corners, 0)
+        corners_coor = ((corners[...,:2] - self.bbox_coder.pc_range[0]) / (self.bbox_coder.voxel_size[0] * self.bbox_coder.out_size_factor))
+        circumscribed_rectangle_on_feature_max_height = corners_coor[...,1].max(-1).values
+        circumscribed_rectangle_on_feature_max_width = corners_coor[...,0].max(-1).values
+        circumscribed_rectangle_on_feature_min_height = corners_coor[...,1].min(-1).values
+        circumscribed_rectangle_on_feature_min_width = corners_coor[...,0].min(-1).values
+        # 2, 200, 4
+        circumscribed_rectangle_on_feature_coor = torch.stack([circumscribed_rectangle_on_feature_min_width,
+                                                                           circumscribed_rectangle_on_feature_min_height,
+                                                                           circumscribed_rectangle_on_feature_max_width,
+                                                                           circumscribed_rectangle_on_feature_max_height], dim=-1)
+        
+        self_attn_mask = kwargs.get('self_attn_mask', None)
+        
+        for sample_idx in range(batch_size):
+            roi_features = self.pooler_pts([new_lidar_feat[sample_idx:sample_idx + 1]],
+                                   [Boxes(circumscribed_rectangle_on_feature_coor[sample_idx])])
+            query_feat_view = prev_query_feat[sample_idx:sample_idx + 1].permute(2, 0, 1) # [23, 1, 128]
+            roi_features = roi_features.flatten(2).permute(2, 0, 1) # [49, N, C]
+            query_feat_view2 = self.dyconv_pre_self_attn_pts(query_feat_view, query_feat_view, value=query_feat_view, attn_mask=None if self_attn_mask is None else self_attn_mask[sample_idx])[0]
+            query_feat_view = query_feat_view + self.dropout1_pts(query_feat_view2)
+            query_feat_view = self.norm1_pts(query_feat_view)
+            self_feat_view = query_feat_view.clone()
+
+            query_feat_view = query_feat_view.permute(1, 0, 2) # [1, 23, 128]
+            query_feat_view2 = self.dyconv_pts(query_feat_view, roi_features) # [23, 128]
+            query_feat_view = query_feat_view + self.dropout2_pts(query_feat_view2)
+            query_feat_view = self.norm2_pts(query_feat_view)
+            
+            query_feat_view = self.ffn(query_feat_view)
+            query_feat_view = self.norm3_pts(query_feat_view)
+
+            self_feat_view = self.self_ffn(self_feat_view)
+            self_feat_view = self.self_norm_pts(self_feat_view)
+            query_feat_view = query_feat_view * self.scale + self_feat_view * self.self_scale
             query_feat[sample_idx, : , :] = query_feat_view.permute(0,2,1)[0]
 
         return query_feat, None

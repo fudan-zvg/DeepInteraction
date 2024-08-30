@@ -151,6 +151,9 @@ def main():
         torch.backends.cudnn.benchmark = True
 
     cfg.model.pretrained = None
+    
+    cfg.model.pts_bbox_head.num_proposals = 400
+    
     # in case the test dataset is concatenated
     samples_per_gpu = 1
     if isinstance(cfg.data.test, dict):

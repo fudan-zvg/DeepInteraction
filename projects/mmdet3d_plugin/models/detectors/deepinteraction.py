@@ -8,12 +8,12 @@ from torch.nn import functional as F
 
 from mmdet3d.core import (Box3DMode, Coord3DMode, bbox3d2result,
                           merge_aug_bboxes_3d, show_result)
-from mmdet3d.ops import Voxelization
+# from mmdet3d.ops import Voxelization
+from ..updated_modules import SPConvVoxelization as Voxelization
 from mmdet.core import multi_apply
 from mmdet.models import DETECTORS
 from mmdet3d.models import builder
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
-import pdb
 
 
 @DETECTORS.register_module()
@@ -23,6 +23,7 @@ class DeepInteraction(MVXTwoStageDetector):
     def __init__(self,
                  freeze_img=False,
                  freeze_pts=False,
+                 multi_scale=False,
                  pts_pillar_layer=None,
                  pts_voxel_layer=None,
                  pts_voxel_encoder=None,
@@ -40,15 +41,19 @@ class DeepInteraction(MVXTwoStageDetector):
                  test_cfg=None,
                  pretrained=None,
                  init_cfg=None):
-        super(DeepInteraction, self).__init__(pts_voxel_layer, pts_voxel_encoder,
+        super(DeepInteraction, self).__init__(None, pts_voxel_encoder,
                              pts_middle_encoder, pts_fusion_layer,
                              img_backbone, pts_backbone, img_neck, pts_neck,
                              pts_bbox_head, img_roi_head, img_rpn_head,
                              train_cfg, test_cfg, pretrained, init_cfg)
         
-        self.pts_pillar_layer = Voxelization(**pts_pillar_layer)
-        self.imgpts_neck = builder.build_neck(imgpts_neck)
-        
+        if pts_voxel_layer is not None:
+            self.pts_voxel_layer = Voxelization(**pts_voxel_layer)
+        if pts_pillar_layer is not None:
+            self.pts_pillar_layer = Voxelization(**pts_pillar_layer)
+        if imgpts_neck is not None:
+            self.imgpts_neck = builder.build_neck(imgpts_neck)
+        self.multi_scale = multi_scale
         self.freeze_img = freeze_img
         self.freeze_pts = freeze_pts
         
@@ -137,7 +142,10 @@ class DeepInteraction(MVXTwoStageDetector):
     def extract_feat(self, points, img, img_metas):
         img_feats = self.extract_img_feat(img, img_metas)
         pts_feats, pts_metas = self.extract_pts_feat(points, img_feats, img_metas)
-        new_img_feat, new_pts_feat = self.imgpts_neck(img_feats[0], pts_feats[0], img_metas, pts_metas)
+        if not self.multi_scale:
+            new_img_feat, new_pts_feat = self.imgpts_neck(img_feats[0], pts_feats[0], img_metas, pts_metas)
+        else:
+            new_img_feat, new_pts_feat = self.imgpts_neck(img_feats[:2], pts_feats, img_metas, pts_metas)
         return (new_img_feat, new_pts_feat)
 
     @torch.no_grad()
@@ -230,7 +238,7 @@ class DeepInteraction(MVXTwoStageDetector):
         """
         outs = self.pts_bbox_head(pts_feats, img_feats, img_metas)
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
-        losses = self.pts_bbox_head.loss(*loss_inputs)
+        losses = self.pts_bbox_head.loss(*loss_inputs, img_metas=img_metas)
         return losses
 
     def simple_test_pts(self, x, x_img, img_metas, rescale=False):

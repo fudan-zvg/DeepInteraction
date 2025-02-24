@@ -28,8 +28,8 @@
 
 |   Model   | Modality | mAP  | NDS  | Checkpoint |
 | :-------: | :------: | :--: | :--: | :--------: |
-| [DeepInteraction](projects/configs/nuscenes/Fusion_0075_refactor.py) |   C+L    | 69.85 | 72.63 | [Fusion_0075_refactor.pth](https://drive.google.com/file/d/1M5eUlXZ8HJ--J53y0FoAHn1QpZGowsdc/view?usp=sharing) |
-| [DeepInteraction++](projects/configs/nuscenes/Fusion_0075_plusplus.py) |   C+L    | 70.63 | 73.27 | [Fusion_0075_plusplus.pth](https://drive.google.com/file/d/1gryGeqNA0wj6C-n-k7Be5ibJ02KVSfVH/view?usp=sharing) |
+| [DeepInteraction](projects/configs/nuscenes/Fusion_0075_refactor.py) |   C+L    | 69.85 | 72.63 | Fusion_0075_refactor.pth ([GoogleDrive](https://drive.google.com/file/d/1M5eUlXZ8HJ--J53y0FoAHn1QpZGowsdc/view?usp=sharing)/[HuggingFace](https://huggingface.co/NaNaoi/DeepInteraction/tree/main))|
+| [DeepInteraction++](projects/configs/nuscenes/Fusion_0075_plusplus.py) |   C+L    | 70.63 | 73.27 | Fusion_0075_plusplus.pth ([GoogleDrive](https://drive.google.com/file/d/1gryGeqNA0wj6C-n-k7Be5ibJ02KVSfVH/view?usp=sharing)/[HuggingFace](https://huggingface.co/NaNaoi/DeepInteraction/tree/main)) |
 
 ## Get Started
 
@@ -40,7 +40,7 @@ This implementation is build upon [mmdetection3d](https://github.com/open-mmlab/
 Please follow the official instructions of mmdetection3d to process the nuScenes dataset.(https://mmdetection3d.readthedocs.io/en/latest/datasets/nuscenes_det.html)
 
 ### Pretrained
-Downloads the [pretrained backbone weights](https://drive.google.com/drive/folders/1uUCpdZsi7X_IVNv9czEfFUNY3v4gGnlY?usp=sharing) to pretrained/ 
+Downloads the pretrained backbone weights ([GoogleDrive](https://drive.google.com/drive/folders/1uUCpdZsi7X_IVNv9czEfFUNY3v4gGnlY?usp=sharing)/[HuggingFace](https://huggingface.co/NaNaoi/DeepInteraction/tree/main)) to pretrained/ 
 
 ### Train & Test
 ```shell

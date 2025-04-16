@@ -5,7 +5,7 @@
 
 > [**DeepInteraction++: Multi-Modality Interaction for Autonomous Driving**](https://arxiv.org/abs/2408.05075),            
 > Zeyu Yang, Nan Song, [Wei Li](https://weivision.github.io/), [Xiatian Zhu](https://xiatian-zhu.github.io), [Li Zhang](https://lzrobots.github.io), [Philip H.S. Torr](https://torrvision.com/index.html)\
-> **Arxiv 2024**
+> **TPAMI 2025**
 
 ## News
 
@@ -69,10 +69,10 @@ Many thanks to the following open-source projects:
 ```
 
 ```bibtex
-@inproceedings{yang2024deepinteractionpp,
+@article{yang2024deepinteractionpp,
   title={DeepInteraction++: Multi-Modality Interaction for Autonomous Driving},
-  author={Yang, Zeyu and Song, Nan and Li, Wei and Zhu, Xiatian and Zhang, Li and Philip H.S.},
-  booktitle={Arxiv},
-  year={2024}
+  author={Yang, Zeyu and Song, Nan and Li, Wei and Zhu, Xiatian and Zhang, Li and Torr, Philip H.S.},
+  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)},
+  year={2025}
 }
 ```
